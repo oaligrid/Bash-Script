@@ -1,81 +1,91 @@
 #!/bin/bash
-declare -i RES=1000
-declare -i NUM=1000
-declare -a NUMS
 
-# This is the personal property of Owais Ali
-touch temp.txt
-INFO="temp.txt"
+# Initialize variables
+operation=""
+debug=false
+result=0
+numbers=()
 
-while getopts "o:n:d" opt; do
-    case $opt in
-        o)
-            case $OPTARG in
-                "+"|"-"|"*"|"/"|"%")
-                    OP=$OPTARG
-                    ;;
-                *)
-                    echo "Incorrect Operation"
-                    ;;
-            esac
-            ;;
-        n)
-            NUMS+=("$OPTARG")
-            ;;
-        d)
-            echo "USER: $(whoami)" >> $INFO
-            echo "SCRIPT: $0" >> $INFO
-            echo "OPERATION: $OP" >> $INFO
-            echo "NUMBERS: ${NUMS[*]}" >> $INFO
-            ;;
-    esac
-done
+# to run the script first do chmod +x
 
-case $OP in
-    "+"|"-")
-        RES=0
-        ;;
-    "*"|"/")
-        RES=1
-        ;;
-    '%')
-        RES=${NUMS[0]}
-        ;;
-    *)
-        RES=500
-        ;;
-esac
+# Get username
+username=$(whoami)
 
-RES=${NUMS[0]}
-flag=0
+# Get script name
+script_name=$(basename "$0")
 
-for NUM in "${NUMS[@]}"; do
-    if [ $flag -eq 0 ]; then
-        flag=1
-        continue
-    fi
+# Function to perform arithmetic operations
+perform_operation() {
+    local operator=$1
+    shift
+    local operands=("$@")
 
-    case $OP in
+    case $operator in
         "+")
-            RES=$((RES + NUM))
+            for num in "${operands[@]}"; do
+                ((result += num))
+            done
             ;;
         "-")
-            RES=$((RES - NUM))
-            ;;
-        "/")
-            RES=$((RES / NUM))
+            result=${operands[0]}
+            for ((i = 1; i < ${#operands[@]}; i++)); do
+                ((result -= ${operands[i]}))
+            done
             ;;
         "*")
-            RES=$((RES * NUM))
+            result=1
+            for num in "${operands[@]}"; do
+                ((result *= num))
+            done
             ;;
         "%")
-            RES=$((RES % NUM))
+            result=${operands[0]}
+            for ((i = 1; i < ${#operands[@]}; i++)); do
+                ((result %= ${operands[i]}))
+            done
+            ;;
+        *)
+            echo "Invalid operator: $operator"
+            exit 1
+            ;;
+    esac
+}
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -o)
+            operation=$2
+            shift 2
+            ;;
+        -n)
+            shift
+            while [[ $# -gt 0 && "$1" != "-d" ]]; do
+                numbers+=("$1")
+                shift
+            done
+            ;;
+        -d)
+            debug=true
+            shift
+            ;;
+        *)
+            echo "Invalid argument: $1"
+            exit 1
             ;;
     esac
 done
 
-echo "Result: $RES"
-if [ -f $INFO ]; then
-    cat $INFO
+# Perform the operation
+perform_operation "$operation" "${numbers[@]}"
+
+# Output additional information if debug flag is set
+if [ "$debug" = true ]; then
+    echo "User: $username"
+    echo "Script: $script_name"
+    echo "Operation: $operation"
+    echo "Numbers: ${numbers[*]}"
 fi
-rm temp.txt
+
+# Output the result
+echo "Result: $result"
